@@ -20,7 +20,7 @@
           {{
             groups['k3s_cluster']
             | map('extract', hostvars, ['ansible_facts', 'hostname'])
-            | list
+            | list | default([])
           }}
       run_once: true
       when: "'k3s_cluster' in groups"
@@ -88,6 +88,13 @@
   environment: "{{ proxy_env | default({}) }}"
   roles:
     - role: k3s_server_post
+      become: true
+
+- name: Setup k3s helm extras (post)
+  hosts: master
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - role: k3s_helm
       become: true
 
 - name: Storing kubeconfig in the playbook directory

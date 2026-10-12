@@ -1,0 +1,48 @@
+---
+- name: Deploy helm chart assets
+  vars:
+    # can use files from either this playbook or another one
+    local_playbook_dir: "{{ lookup('env', 'PWD') }}"
+  # when: >-
+  #   {{ ansible_facts.hostname == hostvars[groups[group_name_master |
+  #   default('master')][0]]['ansible_facts']['hostname'] }}
+  block:
+    - name: Create static content directory
+      ansible.builtin.file:
+        path: "{{ k3s_helm_chart_path }}"
+        mode: "0700"
+        state: directory
+
+    - name: Copy helm charts to k3s
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ k3s_helm_chart_path }}/k3s-extras-{{ item | basename }}"
+        owner: root
+        group: root
+        mode: '0600'
+      with_fileglob:
+        - "{{ local_playbook_dir }}/{{ k3s_helm_chart_source_path }}/*.tgz"
+
+- name: Deploy helm chart configuration
+  vars:
+    # can use files from either this playbook or another one
+    local_playbook_dir: "{{ lookup('env', 'PWD') }}"
+  when: >-
+    ansible_facts.hostname == hostvars[groups[group_name_master |
+    default('master')][0]]['ansible_facts']['hostname']
+  block:
+    - name: Create helm chart deployment configuration directory
+      ansible.builtin.file:
+        path: "{{ k3s_helm_chart_values_path }}"
+        mode: "0700"
+        state: directory
+
+    - name: Deploy helm chart deployment configuration
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ k3s_helm_chart_values_path }}/{{ item | basename }}"
+        owner: root
+        group: root
+        mode: '0600'
+      with_fileglob:
+        - "{{ local_playbook_dir }}/{{ k3s_helm_values_source_path }}/*.yml"

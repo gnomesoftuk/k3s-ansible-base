@@ -2,6 +2,9 @@
 - name: Setup static cluster configurations
   vars:
     relative_path: static-config
+  when: >-
+    ansible_facts.hostname == hostvars[groups[group_name_master |
+    default('master')][0]]['ansible_facts']['hostname']
   block:
     - name: Clean static config manifests directory
       ansible.builtin.file:
@@ -9,7 +12,6 @@
         state: absent
         owner: root
         group: root
-        mode: '0755'
 
     - name: Create static config manifests directory
       ansible.builtin.file:
@@ -17,7 +19,16 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: '0600'
+
+    # any static resources such as helm charts
+    # will be deleted to ensure these do not
+    # build up over time
+    - name: Clean static content directory
+      ansible.builtin.file:
+        path: "/var/lib/rancher/k3s/server/static"
+        mode: "0700"
+        state: absent
 
     - name: Deploy static manifests
       ansible.builtin.template:
