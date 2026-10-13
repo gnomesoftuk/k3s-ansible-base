@@ -1,0 +1,16 @@
+---
+argument_specs:
+  main:
+    short_description: Configure k3s for airgapped environment
+    description: >-
+      Because this role will deliver images to every single node in the cluster
+      it is recommended to use this solely for essential cluster components needed
+      for operation in an airgapped environment
+
+      For deploying applications and supporting services it is better to rely on a dedicated
+      image registry, though if one isn't available you can deliver images this way but it will
+      waste precious disk space.
+    options:
+      k3s_airgap_dir:
+        description: Relative path for k3s binaries and images
+        required: true

@@ -1,0 +1,3 @@
+---
+k3s_server_manifests_dest: '/var/lib/rancher/k3s/server/manifests'
+k3s_cluster_static_manifests: []

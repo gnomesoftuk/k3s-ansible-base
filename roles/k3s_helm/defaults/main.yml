@@ -1,0 +1,5 @@
+---
+k3s_helm_chart_path: /var/lib/rancher/k3s/server/static/charts
+k3s_helm_chart_values_path: /var/lib/rancher/k3s/server/manifests/helm-extras
+k3s_helm_chart_source_path: files/k3s-extras-pack/charts
+k3s_helm_values_source_path: helm/k3s-extras/values

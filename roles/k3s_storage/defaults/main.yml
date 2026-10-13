@@ -1,0 +1,4 @@
+---
+k3s_secondary_storage_disk: /dev/sdb
+k3s_secondary_storage_label: K3SSTORAGE
+k3s_secondary_storage_auto_resize: true

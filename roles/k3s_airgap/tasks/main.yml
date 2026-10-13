@@ -1,0 +1,108 @@
+---
+- name: Check for Airgap
+  when: k3s_airgap_dir is defined
+  vars:
+    # can use files from either this playbook or another one
+    local_playbook_dir: "{{ lookup('env', 'PWD') }}"
+  block:
+
+    - name: Distribute Airgap Artifacts
+      tags:
+        - distribute_artifacts
+      block:
+        - name: Verify Ansible meets airgap version requirements.
+          ansible.builtin.assert:
+            that: "ansible_version.full is version_compare('2.15', '>=')"
+            msg: "The Airgap role requires at least ansible-core 2.15"
+
+
+        - name: Determine architecture and set airgap_k3s_arch
+          ansible.builtin.set_fact:
+            airgap_k3s_arch: >-
+              {{  'arm64' if ansible_facts['architecture'] == 'aarch64' else
+                  'arm' if ansible_facts['architecture'] == 'armv7l' else
+                  'amd64' }}
+
+        - name: Distribute K3s binary
+          ansible.builtin.copy:
+            src: "{{ item }}"
+            dest: /usr/local/bin/k3s
+            owner: root
+            group: root
+            mode: "0755"
+          with_first_found:
+            - files:
+                - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/k3s-{{ airgap_k3s_arch }}"
+              # with_first_found always runs, even inside the when block
+              # so we need to skip it if the file is not found
+              skip: true
+
+        # Dependencies are listed first so they get installed first in the next task
+        - name: Distribute K3s SELinux RPM
+          when: ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Suse'
+          ansible.builtin.copy:
+            src: "{{ item }}"
+            dest: /tmp/
+            owner: root
+            group: root
+            mode: "0755"
+          with_fileglob:
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/container-selinux*.rpm"
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/selinux-policy*.rpm"
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/k3s-selinux*.rpm"
+          register: airgap_selinux_copy
+          ignore_errors: true
+
+        - name: Install K3s SELinux RPM
+          when:
+            - ansible_facts['os_family'] == 'RedHat' or ansible_facts['os_family'] == 'Suse'
+            - airgap_selinux_copy.skipped is false
+          ansible.builtin.dnf:
+            name: "{{ airgap_selinux_copy.results | selectattr('dest', 'defined') | map(attribute='dest') | list }}"
+            state: present
+            disable_gpg_check: true
+            disablerepo: "*"
+
+        # This is safe to do as anything in here will have already been loaded into containerd
+        # the downside to this is that every image needs copying on every run so perhaps this belongs in
+        # a cleanup runbook
+        # - name: Clear images directory
+        #   ansible.builtin.file:
+        #     path: "/var/lib/rancher/k3s/agent/images/"
+        #     state: absent
+
+        - name: Make images directory
+          ansible.builtin.file:
+            path: "/var/lib/rancher/k3s/agent/images/"
+            mode: "0755"
+            state: directory
+
+        - name: Distribute Airgap images
+          ansible.builtin.copy:
+            src: "{{ item }}"
+            dest: /var/lib/rancher/k3s/agent/images/{{ item | basename }}
+            owner: root
+            group: root
+            mode: "0755"
+          with_fileglob:
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar.gz"
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar.zst"
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar"
+
+        - name: Distribute Airgap extra images
+          ansible.builtin.copy:
+            src: "{{ item }}"
+            dest: /var/lib/rancher/k3s/agent/images/{{ item | basename }}
+            owner: root
+            group: root
+            mode: "0755"
+          with_fileglob:
+            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar.gz"
+            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar.zst"
+            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar"
+
+        # Ideally i would test that these images have been loaded into the k3s containerd image
+        # cache, but since this role is typically run before k3s starts, there is no way
+        # to achieve this.
+        # I could maybe achieve this with a handler but the playbook would probably
+        # fail before this if any of the deployments that required the images failed

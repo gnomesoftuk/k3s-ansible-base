@@ -1,0 +1,40 @@
+---
+- name: Setup static cluster configurations
+  vars:
+    relative_path: static-config
+  when: >-
+    ansible_facts.hostname == hostvars[groups[group_name_master |
+    default('master')][0]]['ansible_facts']['hostname']
+  block:
+    - name: Clean static config manifests directory
+      ansible.builtin.file:
+        path: "{{ k3s_server_manifests_dest }}/{{ relative_path }}"
+        state: absent
+        owner: root
+        group: root
+
+    - name: Create static config manifests directory
+      ansible.builtin.file:
+        path: "{{ k3s_server_manifests_dest }}/{{ relative_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0600'
+
+    # any static resources such as helm charts
+    # will be deleted to ensure these do not
+    # build up over time
+    - name: Clean static content directory
+      ansible.builtin.file:
+        path: "/var/lib/rancher/k3s/server/static"
+        mode: "0700"
+        state: absent
+
+    - name: Deploy static manifests
+      ansible.builtin.template:
+        src: "{{ item | basename }}.yml.j2"
+        dest: "{{ k3s_server_manifests_dest }}/{{ relative_path }}/{{ item | basename }}.yml"
+        owner: root
+        group: root
+        mode: '0600'
+      loop: "{{ k3s_cluster_static_manifests }}"

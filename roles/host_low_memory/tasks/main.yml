@@ -1,0 +1,19 @@
+---
+- name: Optimise host for low RAM environments
+  block:
+
+    - name: Reduce kernel memory swappiness
+      ansible.posix.sysctl:
+        name: vm.swappiness
+        value: "10"
+        state: present
+        reload: true
+      tags: sysctl
+
+    - name: Reduce memory reclaiming for caching
+      ansible.posix.sysctl:
+        name: vm.vfs_cache_pressure
+        value: "150"
+        state: present
+        reload: true
+      tags: sysctl

@@ -43,9 +43,34 @@
     - /etc/rancher/
     - /var/lib/kubelet
     - /var/lib/rancher/k3s
-    - /var/lib/rancher/
     - /var/lib/cni/
     - /etc/cni/net.d
+
+  # if this dir is mounted then deleting it will fail
+- name: Remove rancher directory
+  ansible.builtin.file:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - /var/lib/rancher/
+  when: not retain_rancher_dir | bool
+
+- name: Resursively delete inside rancher directory
+  when: retain_rancher_dir | bool
+  block:
+    - name: Find all contents inside the directory
+      ansible.builtin.find:
+        paths: /var/lib/rancher/
+        recurse: true
+        hidden: true
+        file_type: any
+      register: rancher_dir_contents
+
+    - name: Purge all inner files and subdirectories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ rancher_dir_contents.files }}"
 
 - name: Remove K3s http_proxy files
   ansible.builtin.file:

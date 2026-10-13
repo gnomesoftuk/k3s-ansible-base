@@ -1,0 +1,24 @@
+---
+argument_specs:
+  main:
+    short_description: Deploy k3s helm chart extras
+    description: >-
+      This role can be used to deploy helm charts for foundational cluster capabilities
+      such as storage controllers, ingress controllers
+
+      I do not recommend using this for deploying applications or databases as these
+      typically follow a different lifecycle to infrastructure and also the helm controller
+      doesn't offer the level of orchestration that tools such as ArgoCD do
+    options:
+      k3s_helm_chart_path:
+        description: Where to deploy the helm chart tarballs
+        required: false
+      k3s_helm_chart_values_path:
+        description: Where to deploy the helm chart values
+        required: false
+      k3s_helm_chart_source_path:
+        description: Where to find the helm chart tarballs
+        required: false
+      k3s_helm_values_source_path:
+        description: Where to find the helm chart values files
+        required: false

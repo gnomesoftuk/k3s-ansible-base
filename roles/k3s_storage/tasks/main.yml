@@ -1,0 +1,40 @@
+---
+- name: Configure K3s Storage
+  block:
+
+    - name: Ensure the target data directory exists
+      ansible.builtin.file:
+        path: /var/lib/rancher
+        state: directory
+        mode: '0755'
+
+    - name: Format the secondary disk
+      community.general.filesystem:
+        fstype: ext4
+        dev: "{{ k3s_secondary_storage_disk }}"
+        force: false
+        opts: "-L {{ k3s_secondary_storage_label }}"
+        resizefs: "{{ k3s_secondary_storage_auto_resize }}"
+
+    - name: Mount RAID disk to /var/lib/rancher and add to fstab
+      ansible.posix.mount:
+        path: /var/lib/rancher
+        src: "LABEL={{ k3s_secondary_storage_label }}"
+        fstype: ext4
+        opts: defaults,noatime
+        state: mounted
+
+- name: K3s storage report
+  block:
+    - name: Fetch filesystem info
+      ansible.builtin.command:
+        cmd: "blkid {{ k3s_secondary_storage_disk }}"
+      check_mode: false
+      changed_when: false
+      register: k3s_secondary_storage_fs_info
+
+    - name: Show filesystem info
+      ansible.builtin.debug:
+        msg: >
+          Found filesystem for K3s storage device:
+          {{ k3s_secondary_storage_fs_info.stdout }}

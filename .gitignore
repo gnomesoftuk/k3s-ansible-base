@@ -4,3 +4,5 @@ ansible.cfg
 .ansible/
 kubeconfig
 zIgnore/
+
+collections/ansible_collections
