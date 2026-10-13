@@ -18,7 +18,6 @@
 
         - name: Determine architecture and set airgap_k3s_arch
           ansible.builtin.set_fact:
-          # need to split this line to appease linter
             airgap_k3s_arch: >-
               {{  'arm64' if ansible_facts['architecture'] == 'aarch64' else
                   'arm' if ansible_facts['architecture'] == 'armv7l' else
@@ -34,7 +33,6 @@
           with_first_found:
             - files:
                 - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/k3s-{{ airgap_k3s_arch }}"
-                - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/k3s"
               # with_first_found always runs, even inside the when block
               # so we need to skip it if the file is not found
               skip: true
@@ -87,9 +85,9 @@
             group: root
             mode: "0755"
           with_fileglob:
-            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*.tar.gz"
-            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*.tar.zst"
-            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*.tar"
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar.gz"
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar.zst"
+            - "{{ local_playbook_dir }}/{{ k3s_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar"
 
         - name: Distribute Airgap extra images
           ansible.builtin.copy:
@@ -99,9 +97,9 @@
             group: root
             mode: "0755"
           with_fileglob:
-            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*.tar.gz"
-            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*.tar.zst"
-            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*.tar"
+            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar.gz"
+            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar.zst"
+            - "{{ local_playbook_dir }}/{{ k3s_extras_airgap_dir }}/*{{ airgap_k3s_arch }}*.tar"
 
         # Ideally i would test that these images have been loaded into the k3s containerd image
         # cache, but since this role is typically run before k3s starts, there is no way
