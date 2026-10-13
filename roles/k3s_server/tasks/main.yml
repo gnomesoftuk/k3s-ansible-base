@@ -5,8 +5,24 @@
     state: stopped
   failed_when: false
 
+- name: Check if k3s server is already initialised
+  ansible.builtin.stat:
+    path: /var/lib/rancher/k3s/server/node-token
+  register: k3s_token_check
+
+- name: Set fact for k3s server init
+  ansible.builtin.set_fact:
+    k3s_server_initialised: "{{ k3s_token_check.stat.exists | bool }}"
+
+- name: Ensure initialised k3s server is started
+  when: k3s_server_initialised
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+
 # k3s-init won't work if the port is already in use
 - name: Stop k3s
+  when: not k3s_server_initialised
   ansible.builtin.systemd:
     name: k3s
     state: stopped
@@ -50,10 +66,14 @@
       no_log: true
       when: groups[group_name_master | default('master')] | length > 1
 
+    # Orchestrate a k3s master initialisation if it hasn't occured before
+    # otherwise perform the checks anyway and run the join master routines
     - name: Orchestrate control-plane initialization from the first master
       when: inventory_hostname == groups[group_name_master | default('master')][0]
       block:
+
         - name: Init the first master inside the transient k3s-init service
+          when: not k3s_server_initialised
           ansible.builtin.command:
             cmd: >-
               systemd-run -p RestartSec=2 -p Restart=on-failure
