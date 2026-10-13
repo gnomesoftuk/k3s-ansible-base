@@ -6,3 +6,6 @@ argument_specs:
       systemd_dir:
         description: Path to systemd services
         default: /etc/systemd/system
+      retain_rancher_dir:
+        description: if mounted then it cannot be deleted, so recursively delete under it
+        default: false
