@@ -28,6 +28,7 @@
     path: /var/lib/rancher/k3s/server/manifests/metallb-crds.yaml
     regexp: "{{ item.change | ansible.builtin.regex_escape }}"
     replace: "{{ item.to }}"
+  ignore_errors: "{{ ansible_check_mode }}"
   with_items:
     - change: metallb/speaker:{{ metal_lb_controller_tag_version }}
       to: metallb/speaker:{{ metal_lb_speaker_tag_version }}
@@ -37,6 +38,7 @@
     ansible_facts.hostname == hostvars[groups[group_name_master | default('master')][0]]['ansible_facts']['hostname']
 
 - name: Read back MetalLB manifest from first master
+  ignore_errors: "{{ ansible_check_mode }}"
   ansible.builtin.slurp:
     src: /var/lib/rancher/k3s/server/manifests/metallb-crds.yaml
   register: metallb_manifest
@@ -44,6 +46,7 @@
     ansible_facts.hostname == hostvars[groups[group_name_master | default('master')][0]]['ansible_facts']['hostname']
 
 - name: Check the MetalLB speaker image reference is present
+  ignore_errors: "{{ ansible_check_mode }}"
   ansible.builtin.set_fact:
     metallb_manifest_has_speaker_tag: >-
       {{
@@ -54,6 +57,7 @@
     ansible_facts.hostname == hostvars[groups[group_name_master | default('master')][0]]['ansible_facts']['hostname']
 
 - name: Fail if MetalLB speaker tag was not applied to the manifest
+  ignore_errors: "{{ ansible_check_mode }}"
   ansible.builtin.fail:
     msg: >-
       MetalLB speaker image reference
