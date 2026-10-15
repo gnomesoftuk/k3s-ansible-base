@@ -65,7 +65,7 @@
         {{ k3s_kubectl_binary | default('k3s kubectl') }} wait helmchart
         --namespace='kube-system' {{ chart_name }}
         --for condition=JobCreated=True
-        --timeout='1m'
+        --timeout='30s'
       changed_when: false
       check_mode: false
       register: helm_wait_result
@@ -77,3 +77,21 @@
       loop_control:
         loop_var: chart_name
         label: "helm chart - {{ chart_name }}"
+
+    - name: Wait for HelmChart Job status
+      ansible.builtin.command: >
+        {{ k3s_kubectl_binary | default('k3s kubectl') }} wait job
+        --namespace='kube-system' "helm-install-{{ chart_name }}"
+        --for condition=complete
+        --timeout='30s'
+      changed_when: false
+      check_mode: false
+      register: helm_job_wait_result
+      until: helm_job_wait_result.rc == 0
+      retries: 3
+      delay: 10
+      run_once: true
+      with_items: "{{ helm_charts_to_wait_for }}"
+      loop_control:
+        loop_var: chart_name
+        label: "helm chart job - helm-install-{{ chart_name }}"
