@@ -89,6 +89,8 @@
   roles:
     - role: k3s_server_post
       become: true
+  tags:
+    - post
 
 - name: Setup k3s helm extras (post)
   hosts: master
@@ -96,6 +98,9 @@
   roles:
     - role: k3s_helm
       become: true
+  tags:
+    - post
+    - helm
 
 - name: Storing kubeconfig in the playbook directory
   hosts: master

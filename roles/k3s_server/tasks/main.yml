@@ -16,7 +16,7 @@
 
 - name: Ensure initialised k3s server is started
   when: k3s_server_initialised
-  ansible.builtin.systemd:
+  ansible.builtin.service:
     name: k3s
     state: started
 
