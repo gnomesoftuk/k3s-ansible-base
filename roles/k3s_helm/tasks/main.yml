@@ -3,9 +3,8 @@
   vars:
     # can use files from either this playbook or another one
     local_playbook_dir: "{{ lookup('env', 'PWD') }}"
-  # when: >-
-  #   {{ ansible_facts.hostname == hostvars[groups[group_name_master |
-  #   default('master')][0]]['ansible_facts']['hostname'] }}
+  when: >-
+    ansible_facts.hostname == hostvars[groups[group_name_master | default('master')][0]]['ansible_facts']['hostname']
   block:
     - name: Create static content directory
       ansible.builtin.file:
@@ -45,4 +44,54 @@
         group: root
         mode: '0600'
       with_fileglob:
-        - "{{ local_playbook_dir }}/{{ k3s_helm_values_source_path }}/*.yml"
+        - "{{ local_playbook_dir }}/{{ k3s_helm_values_source_path }}/helm-*.yml"
+      register: k3s_helm_copied_charts
+
+    - name: Parse chart names from files
+      ansible.builtin.set_fact:
+        # 2. Extract paths -> Get filenames -> Remove 'helm-' and '.yml' extensions
+        helm_charts_to_wait_for: >-
+          {{ k3s_helm_copied_charts.results
+             | map(attribute='item')
+             | map('basename')
+             | map('regex_replace', '^helm-(.*)\.yml$', '\1')
+             | list }}
+      changed_when: false
+      check_mode: false
+
+
+    - name: Wait for HelmChart status
+      ansible.builtin.command: >
+        {{ k3s_kubectl_binary | default('k3s kubectl') }} wait helmchart
+        --namespace='kube-system' {{ chart_name }}
+        --for condition=JobCreated=True
+        --timeout='30s'
+      changed_when: false
+      check_mode: false
+      register: helm_wait_result
+      until: helm_wait_result.rc == 0
+      retries: 3
+      delay: 10
+      run_once: true
+      with_items: "{{ helm_charts_to_wait_for }}"
+      loop_control:
+        loop_var: chart_name
+        label: "helm chart - {{ chart_name }}"
+
+    - name: Wait for HelmChart Job status
+      ansible.builtin.command: >
+        {{ k3s_kubectl_binary | default('k3s kubectl') }} wait job
+        --namespace='kube-system' "helm-install-{{ chart_name }}"
+        --for condition=complete
+        --timeout='30s'
+      changed_when: false
+      check_mode: false
+      register: helm_job_wait_result
+      until: helm_job_wait_result.rc == 0
+      retries: 3
+      delay: 10
+      run_once: true
+      with_items: "{{ helm_charts_to_wait_for }}"
+      loop_control:
+        loop_var: chart_name
+        label: "helm chart job - helm-install-{{ chart_name }}"
